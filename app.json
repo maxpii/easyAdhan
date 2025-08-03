@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "theApp",
-    "slug": "theApp",
+    "name": "Easy Adhan",
+    "slug": "easyAdhan",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,17 +13,50 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "audio",
+          "background-processing",
+          "remote-notification"
+        ],
+        "NSLocationWhenInUseUsageDescription": "This app needs location access to provide accurate prayer times for your area.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs location access to provide accurate prayer times for your area."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "WAKE_LOCK",
+        "VIBRATE",
+        "RECEIVE_BOOT_COMPLETED",
+        "SCHEDULE_EXACT_ALARM"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#4CAF50",
+          "sounds": ["./assets/audio/azan1.mp3"]
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Easy Adhan to use your location to provide accurate prayer times."
+        }
+      ]
+    ]
   }
 }

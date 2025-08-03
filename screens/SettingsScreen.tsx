@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, StyleSheet, Switch } from 'react-native';
+import { View, Text, StyleSheet, Switch, ActivityIndicator, Alert } from 'react-native';
 import * as Location from 'expo-location';
 import { SettingsContext } from '../context/SettingsContext';
 
@@ -12,20 +12,30 @@ export default function SettingsScreen() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [cityName, setCityName] = useState<string>('');
   const [loadingCity, setLoadingCity] = useState<boolean>(false);
+  const [loadingLocation, setLoadingLocation] = useState<boolean>(true);
 
   useEffect(() => {
     (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        setErrorMsg('Permission to access location was denied');
-        return;
-      }
-
+      setLoadingLocation(true);
+      setErrorMsg(null);
+      
       try {
-        const loc = await Location.getCurrentPositionAsync({});
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          setErrorMsg('Permission to access location was denied');
+          setLoadingLocation(false);
+          return;
+        }
+
+        const loc = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
         setLocation(loc);
       } catch (e) {
-        setErrorMsg('Failed to get location');
+        setErrorMsg('Failed to get location. Please check your GPS settings.');
+        console.error('Location error:', e);
+      } finally {
+        setLoadingLocation(false);
       }
     })();
   }, []);
@@ -58,7 +68,7 @@ export default function SettingsScreen() {
         }
       } catch (err) {
         console.warn('Reverse geocoding failed', err);
-        setCityName('Error occurred');
+        setCityName('Location unavailable');
       } finally {
         setLoadingCity(false);
       }
@@ -68,60 +78,128 @@ export default function SettingsScreen() {
   }, [location]);
 
   if (!settings) {
-    return null;
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorText}>Settings not available</Text>
+      </View>
+    );
   }
+
+  const handleToggleNotifications = () => {
+    if (!settings.notificationsEnabled) {
+      Alert.alert(
+        'Enable Notifications',
+        'This will allow you to receive prayer time reminders.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Enable', onPress: settings.toggleNotifications }
+        ]
+      );
+    } else {
+      settings.toggleNotifications();
+    }
+  };
+
+  const handleToggleAzan = () => {
+    if (!settings.azanEnabled) {
+      Alert.alert(
+        'Enable Azan Audio',
+        'This will allow you to hear the adhan when prayer time arrives.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Enable', onPress: settings.toggleAzan }
+        ]
+      );
+    } else {
+      settings.toggleAzan();
+    }
+  };
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.text, { fontSize: fontSize }]}>Settings</Text>
+      <Text style={[styles.title, { fontSize: fontSize + 4 }]}>Settings</Text>
 
-      <View style={styles.row}>
-        <Text style={{ fontSize: fontSize }}>City: </Text>
-        <Text style={{ fontSize: fontSize }}>
-          {errorMsg
-            ? errorMsg
-            : location
-            ? loadingCity
-              ? 'Loading city...'
-              : cityName || 'Unknown'
-            : 'Loading...'}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { fontSize: fontSize }]}>Location Information</Text>
+        
+        {loadingLocation ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color="#4CAF50" />
+            <Text style={[styles.loadingText, { fontSize: fontSize - 2 }]}>Getting location...</Text>
+          </View>
+        ) : errorMsg ? (
+          <View style={styles.errorContainer}>
+            <Text style={[styles.errorText, { fontSize: fontSize - 2 }]}>{errorMsg}</Text>
+          </View>
+        ) : (
+          <>
+            <View style={styles.row}>
+              <Text style={[styles.label, { fontSize: fontSize }]}>City: </Text>
+              <Text style={[styles.value, { fontSize: fontSize }]}>
+                {loadingCity ? 'Loading city...' : cityName || 'Unknown'}
+              </Text>
+            </View>
+
+            <View style={styles.row}>
+              <Text style={[styles.label, { fontSize: fontSize }]}>Latitude: </Text>
+              <Text style={[styles.value, { fontSize: fontSize }]}>
+                {location ? location.coords.latitude.toFixed(3) : 'N/A'}
+              </Text>
+            </View>
+
+            <View style={styles.row}>
+              <Text style={[styles.label, { fontSize: fontSize }]}>Longitude: </Text>
+              <Text style={[styles.value, { fontSize: fontSize }]}>
+                {location ? location.coords.longitude.toFixed(3) : 'N/A'}
+              </Text>
+            </View>
+          </>
+        )}
+      </View>
+
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { fontSize: fontSize }]}>App Preferences</Text>
+        
+        <View style={styles.settingRow}>
+          <View style={styles.settingInfo}>
+            <Text style={[styles.settingLabel, { fontSize: fontSize }]}>Play Azan Audio</Text>
+            <Text style={[styles.settingDescription, { fontSize: fontSize - 2 }]}>
+              Play adhan sound when prayer time arrives
+            </Text>
+          </View>
+          <Switch
+            trackColor={{ false: '#767577', true: '#81b0ff' }}
+            thumbColor={settings.azanEnabled ? '#4CAF50' : '#f4f3f4'}
+            ios_backgroundColor="#3e3e3e"
+            onValueChange={handleToggleAzan}
+            value={settings.azanEnabled}
+          />
+        </View>
+
+        <View style={styles.settingRow}>
+          <View style={styles.settingInfo}>
+            <Text style={[styles.settingLabel, { fontSize: fontSize }]}>Prayer Notifications</Text>
+            <Text style={[styles.settingDescription, { fontSize: fontSize - 2 }]}>
+              Send push notifications for prayer times
+            </Text>
+          </View>
+          <Switch
+            trackColor={{ false: '#767577', true: '#81b0ff' }}
+            thumbColor={settings.notificationsEnabled ? '#4CAF50' : '#f4f3f4'}
+            ios_backgroundColor="#3e3e3e"
+            onValueChange={handleToggleNotifications}
+            value={settings.notificationsEnabled}
+          />
+        </View>
+      </View>
+
+      <View style={styles.infoSection}>
+        <Text style={[styles.infoTitle, { fontSize: fontSize }]}>About Easy Adhan</Text>
+        <Text style={[styles.infoText, { fontSize: fontSize - 2 }]}>
+          This app helps Muslims track prayer times and receive reminders. 
+          Prayer times are calculated based on your current location using 
+          the Aladhan API.
         </Text>
-      </View>
-
-      <View style={styles.row}>
-        <Text style={{ fontSize: fontSize }}>Latitude: </Text>
-        <Text style={{ fontSize: fontSize }}>
-          {location ? location.coords.latitude.toFixed(6) : 'Loading...'}
-        </Text>
-      </View>
-
-      <View style={styles.row}>
-        <Text style={{ fontSize: fontSize }}>Longitude: </Text>
-        <Text style={{ fontSize: fontSize }}>
-          {location ? location.coords.longitude.toFixed(6) : 'Loading...'}
-        </Text>
-      </View>
-
-      <View style={styles.row}>
-        <Text style={{ fontSize: fontSize }}>Play Azan</Text>
-        <Switch
-          trackColor={{ false: '#767577', true: '#81b0ff' }}
-          thumbColor={settings.azanEnabled ? '#A8E6CF' : '#f4f3f4'}
-          ios_backgroundColor="#3e3e3e"
-          onValueChange={settings.toggleAzan}
-          value={settings.azanEnabled}
-        />
-      </View>
-
-      <View style={styles.row}>
-        <Text style={{ fontSize: fontSize }}>Send notification</Text>
-        <Switch
-          trackColor={{ false: '#767577', true: '#81b0ff' }}
-          thumbColor={settings.notificationsEnabled ? '#A8E6CF' : '#f4f3f4'}
-          ios_backgroundColor="#3e3e3e"
-          onValueChange={settings.toggleNotifications}
-          value={settings.notificationsEnabled}
-        />
       </View>
     </View>
   );
@@ -130,16 +208,104 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
     padding: 16,
+    backgroundColor: '#f5f5f5',
   },
-  text: {
+  title: {
+    fontWeight: 'bold',
+    marginBottom: 30,
+    textAlign: 'center',
+    color: '#333',
+  },
+  section: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 12,
     marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  sectionTitle: {
+    fontWeight: 'bold',
+    marginBottom: 15,
+    color: '#333',
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+  },
+  loadingText: {
+    marginLeft: 10,
+    color: '#666',
+  },
+  errorContainer: {
+    padding: 10,
+    backgroundColor: '#ffebee',
+    borderRadius: 8,
+  },
+  errorText: {
+    color: '#d32f2f',
+    textAlign: 'center',
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 15,
-    gap: 6,
+    marginBottom: 12,
+    justifyContent: 'space-between',
+  },
+  label: {
+    fontWeight: '500',
+    color: '#555',
+    flex: 1,
+  },
+  value: {
+    color: '#333',
+    fontWeight: '600',
+    flex: 1,
+    textAlign: 'right',
+  },
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    justifyContent: 'space-between',
+  },
+  settingInfo: {
+    flex: 1,
+    marginRight: 15,
+  },
+  settingLabel: {
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  settingDescription: {
+    color: '#666',
+    lineHeight: 18,
+  },
+  infoSection: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 12,
+    marginTop: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  infoTitle: {
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  infoText: {
+    color: '#666',
+    lineHeight: 20,
   },
 });
