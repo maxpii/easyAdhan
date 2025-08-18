@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, StyleSheet, Switch, ActivityIndicator, Alert } from 'react-native';
+import { ScrollView, View, Text, StyleSheet, Switch, ActivityIndicator, Alert } from 'react-native';
 import * as Location from 'expo-location';
 import { SettingsContext } from '../context/SettingsContext';
 
@@ -116,7 +116,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       <Text style={[styles.title, { fontSize: fontSize + 4 }]}>Settings</Text>
 
       <View style={styles.section}>
@@ -201,15 +201,15 @@ export default function SettingsScreen() {
           the Aladhan API.
         </Text>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     padding: 16,
     backgroundColor: '#f5f5f5',
+    paddingBottom: 50,
   },
   title: {
     fontWeight: 'bold',

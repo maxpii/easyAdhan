@@ -424,7 +424,7 @@ const styles = StyleSheet.create({
   },
   dateSelectionContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
     paddingHorizontal: 10,
