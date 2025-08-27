@@ -13,9 +13,11 @@ import {
 } from 'react-native';
 import { Audio } from 'expo-av';
 import * as Location from 'expo-location';
+import * as Notifications from 'expo-notifications';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SettingsContext } from '../context/SettingsContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { schedulePrayerNotifications } from '../services/notificationManager';
 
 type RootStackParamList = {
   Home: undefined;
@@ -50,6 +52,7 @@ export default function HomeScreen() {
   const [azanPlaying, setAzanPlaying] = useState<boolean | null>(null);
   const [audioLoading, setAudioLoading] = useState(false);
   const [isLoadingAzanState, setIsLoadingAzanState] = useState(true);
+  const [notificationsScheduled, setNotificationsScheduled] = useState(false);
   const sound = useRef<Audio.Sound | null>(null);
   const settings = useContext(SettingsContext);
 
@@ -169,13 +172,14 @@ export default function HomeScreen() {
       );
       const json = await response.json();
       const timings = json.data.timings;
-      setNewPrayerTimes({
-        Fajr: timings.Fajr,
-        Dhuhr: timings.Dhuhr,
-        Asr: timings.Asr,
-        Maghrib: timings.Maghrib,
-        Isha: timings.Isha,
-      });
+      setNewPrayerTimes(timings);
+
+      // Schedule notifications for the day if enabled and not already scheduled
+      if (settings?.notificationsEnabled && !notificationsScheduled) {
+        await schedulePrayerNotifications(timings);
+        setNotificationsScheduled(true);
+      }
+
     } catch {
       setErrorMsg('Failed to fetch prayer times. Please check your internet connection.');
     } finally {
@@ -191,6 +195,17 @@ export default function HomeScreen() {
     if (azanPlaying) return;
     setAudioLoading(true);
     try {
+      // Configure audio session
+      await Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+        allowsRecordingIOS: false,
+        staysActiveInBackground: true,
+        interruptionModeIOS: 1, // DoNotMix
+        interruptionModeAndroid: 1, // DoNotMix
+        shouldDuckAndroid: false,
+        playThroughEarpieceAndroid: false,
+      });
+
       if (sound.current) {
         await sound.current.stopAsync();
         await sound.current.unloadAsync();
@@ -207,7 +222,8 @@ export default function HomeScreen() {
           stopAzan();
         }
       });
-    } catch {
+    } catch (e) {
+      console.error("Error playing azan:", e);
       Alert.alert('Audio Error', 'Failed to play azan audio.');
     } finally {
       setAudioLoading(false);
@@ -225,6 +241,19 @@ export default function HomeScreen() {
     } catch {}
     setAzanPlaying(false);
     saveAzanState(false);
+  };
+
+  const scheduleTestNotification = async () => {
+    Alert.alert('Test Scheduled', 'You should receive a notification in 5 seconds.');
+    const trigger = new Date(Date.now() + 5 * 1000); // 5 seconds from now
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '🔔 Test Notification',
+        body: 'If you see this, the notification system is working!',
+        sound: 'azan1.mp3',
+      },
+      trigger,
+    });
   };
 
   useEffect(() => {
@@ -315,6 +344,13 @@ export default function HomeScreen() {
       </ScrollView>
 
       <View style={styles.audioContainer}>
+        <TouchableOpacity
+          onPress={scheduleTestNotification}
+          style={[styles.button, { marginBottom: 10, backgroundColor: '#f0ad4e' }]}
+        >
+          <Text style={styles.buttonText}>Test Notification in 5s</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity
           onPress={azanPlaying ? stopAzan : playAzan}
           disabled={audioLoading || azanPlaying === null}

@@ -18,7 +18,8 @@
         "UIBackgroundModes": [
           "audio",
           "background-processing",
-          "remote-notification"
+          "remote-notification",
+          "fetch"
         ],
         "NSLocationWhenInUseUsageDescription": "This app needs location access to provide accurate prayer times for your area.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs location access to provide accurate prayer times for your area."
