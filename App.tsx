@@ -9,7 +9,9 @@ import { SettingsProvider } from './context/SettingsContext';
 import * as TaskManager from 'expo-task-manager';
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as Location from 'expo-location';
+import * as Notifications from 'expo-notifications';
 import { schedulePrayerNotifications, registerForPushNotificationsAsync } from './services/notificationManager';
+import { playAzan } from './services/audioManager';
 
 const Tab = createBottomTabNavigator();
 
@@ -59,7 +61,7 @@ async function registerBackgroundTask() {
     });
     console.log('Background fetch task registered');
   } catch (error) {
-    console.error('Failed to register background fetch task:', error);
+    // TODO: Investigate why this is failing on iOS
   }
 }
 
@@ -107,6 +109,14 @@ export default function App() {
     // Request notification permissions and register the background task on app start
     registerForPushNotificationsAsync();
     registerBackgroundTask();
+
+    const notificationSubscription = Notifications.addNotificationReceivedListener(notification => {
+      playAzan();
+    });
+
+    return () => {
+      notificationSubscription.remove();
+    };
   }, []);
 
   return (

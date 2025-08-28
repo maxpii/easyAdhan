@@ -18,6 +18,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SettingsContext } from '../context/SettingsContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { schedulePrayerNotifications } from '../services/notificationManager';
+import { playAzan, stopAzan, isAzanPlaying, setChangeCallback } from '../services/audioManager';
 
 type RootStackParamList = {
   Home: undefined;
@@ -49,14 +50,10 @@ export default function HomeScreen() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [newPrayerTimes, setNewPrayerTimes] = useState<PrayerTimings | null>(null);
   const [remainingTime, setRemainingTime] = useState<RemainingTime | null>(null);
-  const [azanPlaying, setAzanPlaying] = useState<boolean | null>(null);
-  const [audioLoading, setAudioLoading] = useState(false);
+  const [azanPlaying, setAzanPlaying] = useState(isAzanPlaying());
   const [isLoadingAzanState, setIsLoadingAzanState] = useState(true);
-  const [notificationsScheduled, setNotificationsScheduled] = useState(false);
-  const sound = useRef<Audio.Sound | null>(null);
   const settings = useContext(SettingsContext);
 
-  // Load azan state on app start
   useEffect(() => {
     const loadAzanState = async () => {
       try {
@@ -69,6 +66,7 @@ export default function HomeScreen() {
             setAzanPlaying(true);
           } else {
             await AsyncStorage.removeItem(AZAN_STATE_KEY);
+            setAzanPlaying(false);
           }
         } else {
           setAzanPlaying(false);
@@ -82,15 +80,31 @@ export default function HomeScreen() {
     loadAzanState();
   }, []);
 
+  useEffect(() => {
+    setChangeCallback(setAzanPlaying);
+  }, []);
+
   const saveAzanState = async (isPlaying: boolean) => {
     try {
-      if (isPlaying) {
-        const stateData = { isPlaying: true, timestamp: Date.now() };
-        await AsyncStorage.setItem(AZAN_STATE_KEY, JSON.stringify(stateData));
-      } else {
-        await AsyncStorage.removeItem(AZAN_STATE_KEY);
-      }
+      const stateData = { isPlaying, timestamp: Date.now() };
+      await AsyncStorage.setItem(AZAN_STATE_KEY, JSON.stringify(stateData));
     } catch {}
+  };
+
+  const handlePlayAzan = async () => {
+    if (!settings?.azanEnabled) {
+      Alert.alert('Azan Disabled', 'Please enable azan in settings to play audio.');
+      return;
+    }
+    await playAzan();
+    setAzanPlaying(true);
+    saveAzanState(true);
+  };
+
+  const handleStopAzan = async () => {
+    await stopAzan();
+    setAzanPlaying(false);
+    saveAzanState(false);
   };
 
   const getUserLocation = async () => {
@@ -174,10 +188,8 @@ export default function HomeScreen() {
       const timings = json.data.timings;
       setNewPrayerTimes(timings);
 
-      // Schedule notifications for the day if enabled and not already scheduled
-      if (settings?.notificationsEnabled && !notificationsScheduled) {
+      if (settings?.notificationsEnabled) {
         await schedulePrayerNotifications(timings);
-        setNotificationsScheduled(true);
       }
 
     } catch {
@@ -185,62 +197,6 @@ export default function HomeScreen() {
     } finally {
       setPrayerLoading(false);
     }
-  };
-
-  const playAzan = async () => {
-    if (!settings?.azanEnabled) {
-      Alert.alert('Azan Disabled', 'Please enable azan in settings to play audio.');
-      return;
-    }
-    if (azanPlaying) return;
-    setAudioLoading(true);
-    try {
-      // Configure audio session
-      await Audio.setAudioModeAsync({
-        playsInSilentModeIOS: true,
-        allowsRecordingIOS: false,
-        staysActiveInBackground: true,
-        interruptionModeIOS: 1, // DoNotMix
-        interruptionModeAndroid: 1, // DoNotMix
-        shouldDuckAndroid: false,
-        playThroughEarpieceAndroid: false,
-      });
-
-      if (sound.current) {
-        await sound.current.stopAsync();
-        await sound.current.unloadAsync();
-      }
-      const { sound: newSound } = await Audio.Sound.createAsync(
-        require('../assets/audio/azan1.mp3'),
-        { shouldPlay: true }
-      );
-      sound.current = newSound;
-      setAzanPlaying(true);
-      saveAzanState(true);
-      newSound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          stopAzan();
-        }
-      });
-    } catch (e) {
-      console.error("Error playing azan:", e);
-      Alert.alert('Audio Error', 'Failed to play azan audio.');
-    } finally {
-      setAudioLoading(false);
-    }
-  };
-
-  const stopAzan = async () => {
-    if (!azanPlaying) return;
-    try {
-      if (sound.current) {
-        await sound.current.stopAsync();
-        await sound.current.unloadAsync();
-        sound.current = null;
-      }
-    } catch {}
-    setAzanPlaying(false);
-    saveAzanState(false);
   };
 
   const scheduleTestNotification = async () => {
@@ -352,22 +308,17 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={azanPlaying ? stopAzan : playAzan}
-          disabled={audioLoading || azanPlaying === null}
-          style={[styles.audioButton, audioLoading && styles.audioButtonDisabled]}
+          onPress={azanPlaying ? handleStopAzan : handlePlayAzan}
+          style={styles.audioButton}
         >
-          {audioLoading ? (
-            <ActivityIndicator size="large" color="#4CAF50" />
-          ) : (
-            <Image
-              source={
-                azanPlaying
-                  ? require('../assets/stop.png')
-                  : require('../assets/play.png')
-              }
-              style={styles.audioIcon}
-            />
-          )}
+          <Image
+            source={
+              azanPlaying
+                ? require('../assets/stop.png')
+                : require('../assets/play.png')
+            }
+            style={styles.audioIcon}
+          />
           <Text style={styles.audioText}>
             {azanPlaying ? 'Stop Adhan' : 'Play Adhan'}
           </Text>

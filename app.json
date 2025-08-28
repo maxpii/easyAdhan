@@ -17,12 +17,13 @@
       "infoPlist": {
         "UIBackgroundModes": [
           "audio",
-          "background-processing",
-          "remote-notification",
           "fetch"
         ],
         "NSLocationWhenInUseUsageDescription": "This app needs location access to provide accurate prayer times for your area.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs location access to provide accurate prayer times for your area."
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs location access to provide accurate prayer times for your area.",
+        "BGTaskSchedulerPermittedIdentifiers": [
+          "background-prayer-fetch"
+        ]
       }
     },
     "android": {
@@ -57,7 +58,8 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow Easy Adhan to use your location to provide accurate prayer times."
         }
-      ]
+      ],
+      "expo-background-fetch"
     ]
   }
 }
