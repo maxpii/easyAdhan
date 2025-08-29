@@ -100,20 +100,7 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleToggleAzan = () => {
-    if (!settings.azanEnabled) {
-      Alert.alert(
-        'Enable Azan Audio',
-        'This will allow you to hear the adhan when prayer time arrives.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Enable', onPress: settings.toggleAzan }
-        ]
-      );
-    } else {
-      settings.toggleAzan();
-    }
-  };
+  
 
   return (
     <ScrollView style={styles.container}>
@@ -160,21 +147,7 @@ export default function SettingsScreen() {
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { fontSize: fontSize }]}>App Preferences</Text>
         
-        <View style={styles.settingRow}>
-          <View style={styles.settingInfo}>
-            <Text style={[styles.settingLabel, { fontSize: fontSize }]}>Play Azan Audio</Text>
-            <Text style={[styles.settingDescription, { fontSize: fontSize - 2 }]}>
-              Play adhan sound when prayer time arrives
-            </Text>
-          </View>
-          <Switch
-            trackColor={{ false: '#767577', true: '#81b0ff' }}
-            thumbColor={settings.azanEnabled ? '#4CAF50' : '#f4f3f4'}
-            ios_backgroundColor="#3e3e3e"
-            onValueChange={handleToggleAzan}
-            value={settings.azanEnabled}
-          />
-        </View>
+        
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>

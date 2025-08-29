@@ -5,8 +5,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 type SettingsContextType = {
   notificationsEnabled: boolean;
   toggleNotifications: () => void;
-  azanEnabled: boolean;
-  toggleAzan: () => void;
   isLoading: boolean;
 };
 
@@ -20,12 +18,10 @@ const SETTINGS_STORAGE_KEY = '@easy_adhan_settings';
 
 type StoredSettings = {
   notificationsEnabled: boolean;
-  azanEnabled: boolean;
 };
 
 export const SettingsProvider = ({ children }: SettingsProviderProps) => {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [azanEnabled, setAzanEnabled] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
 
   // Load settings from storage on app start
@@ -36,7 +32,6 @@ export const SettingsProvider = ({ children }: SettingsProviderProps) => {
         if (storedSettings) {
           const parsedSettings: StoredSettings = JSON.parse(storedSettings);
           setNotificationsEnabled(parsedSettings.notificationsEnabled);
-          setAzanEnabled(parsedSettings.azanEnabled);
         }
       } catch (error) {
         console.error('Failed to load settings:', error);
@@ -63,16 +58,6 @@ export const SettingsProvider = ({ children }: SettingsProviderProps) => {
     setNotificationsEnabled(newValue);
     saveSettings({
       notificationsEnabled: newValue,
-      azanEnabled,
-    });
-  };
-
-  const toggleAzan = () => {
-    const newValue = !azanEnabled;
-    setAzanEnabled(newValue);
-    saveSettings({
-      notificationsEnabled,
-      azanEnabled: newValue,
     });
   };
 
@@ -81,8 +66,6 @@ export const SettingsProvider = ({ children }: SettingsProviderProps) => {
       value={{ 
         notificationsEnabled, 
         toggleNotifications, 
-        azanEnabled, 
-        toggleAzan,
         isLoading 
       }}
     >
